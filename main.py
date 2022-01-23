@@ -1,6 +1,6 @@
 import cv2
 import sys
-
+from datetime import datetime
 
 # 0:内蔵カメラ使用
 BUILT_IN_CAMERA = 0
@@ -8,6 +8,11 @@ BUILT_IN_CAMERA = 0
 # Cascade File PATH
 Face_Cascade_FILE_PATH = "./HaarCascades/haarcascade_frontalface_default.xml"
 Eye_Cascade_FILE_PATH = "./HaarCascades/haarcascade_eye.xml"
+
+# Mode
+MODE_NORMAL = 0
+MODE_DETECTION_FACE_AND_EYE = 1
+MODE_DETECTION_FACE = 2
 
 
 class ImageOpenError(Exception):
@@ -29,6 +34,8 @@ def main():
     face_cascade = cv2.CascadeClassifier(Face_Cascade_FILE_PATH)
     eye_cascade = cv2.CascadeClassifier(Eye_Cascade_FILE_PATH)
 
+    mode = MODE_NORMAL
+
     try:
 
         capture = cv2.VideoCapture(BUILT_IN_CAMERA)
@@ -43,15 +50,35 @@ def main():
                     # Cammera cannot found
                     raise DeviceCanNotFoundError
 
-                frame = detect_face_and_eye(face_cascade, eye_cascade, frame)
+                if mode == MODE_DETECTION_FACE_AND_EYE:
+                    frame = detect_face_and_eye(face_cascade, eye_cascade, frame)
+                elif mode == MODE_DETECTION_FACE:
+                    frame = detect_face(face_cascade, frame)
 
                 cv2.imshow("capture", frame)
 
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    # Capture is Terminated.
-                    break
+                input_key = cv2.waitKey(1)
 
-            cv2.destroyWindow("capture")
+                if input_key == ord('q') or input_key == 27:
+                    # Capture is Terminated.
+                    cv2.destroyWindow("capture")
+                    break
+                elif input_key == ord('c'):
+                    # cv2.imwrite("capture.jpg", frame)
+                    save_image(frame)
+                    continue
+                elif input_key == ord('f'):
+                    if mode != MODE_DETECTION_FACE_AND_EYE:
+                        mode = MODE_DETECTION_FACE_AND_EYE
+                    else:
+                        mode = MODE_NORMAL
+                    continue
+                elif input_key == ord('e'):
+                    if mode != MODE_DETECTION_FACE:
+                        mode = MODE_DETECTION_FACE
+                    else:
+                        mode = MODE_NORMAL
+                    continue
 
         else:
             raise ImageOpenError
@@ -66,6 +93,13 @@ def main():
 
     finally:
         print("End")
+
+
+def save_image(img):
+    date = datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = "Output/capture_" + date + ".png"
+    cv2.imwrite(path, img)  # ファイル保存
+    print(f"Image File is saved as '{path}'.")
 
 
 def detect_face_and_eye(face_cascade, eye_cascade, frame):
@@ -94,7 +128,27 @@ def detect_face_and_eye(face_cascade, eye_cascade, frame):
     return frame
 
 
-def detect_face_from_picture(input_img: str, saveFileName: str) -> None:
+def detect_face(face_cascade, frame):
+    """detect_face
+
+    Args:
+        face_cascade ([type]): [description]
+        frame ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    faces = face_cascade.detectMultiScale(frame_gray)
+
+    for x, y, w, h in faces:
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+    return frame
+
+
+def detect_face_and_eye_from_picture(input_img: str, saveFileName: str) -> None:
 
     face_cascade = cv2.CascadeClassifier(Face_Cascade_FILE_PATH)
     eye_cascade = cv2.CascadeClassifier(Eye_Cascade_FILE_PATH)
